@@ -162,8 +162,8 @@ int main( void )
 	vTraceEnable( TRC_START );
 
 	xTaskHandle HT;
-	xTaskCreate(Task1, "Task1", 3, NULL, 1, &HT);
-	xTaskCreate(Task2, "Task2", 3, NULL, 3, &HT);
+	xTaskCreate(Task1, "Task1", 3, NULL, 3, &HT);
+	xTaskCreate(Task2, "Task2", 3, NULL, 1, &HT);
 
 	
 	vTaskStartScheduler();
