@@ -355,10 +355,10 @@ void vApplicationStackOverflowHook( TaskHandle_t pxTask, char *pcTaskName )
 /*-----------------------------------------------------------*/
 
 void prioritysettask(void) {
-	if (iCount3 > 1000)
+	if (iCount2 > 1000)
 		vTaskPrioritySet(communication_handle, 4);
 	else
-		if (iCount3 < 300)
+		if (iCount2 < 300)
 			vTaskPrioritySet(communication_handle, 2);
 }
 
