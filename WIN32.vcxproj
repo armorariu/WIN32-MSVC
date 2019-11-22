@@ -131,6 +131,7 @@
     <ClCompile Include="main_blinky.c" />
     <ClCompile Include="main_full.c" />
     <ClCompile Include="Run-time-stats-utils.c" />
+    <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Source\include\event_groups.h" />
