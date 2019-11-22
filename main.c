@@ -14,7 +14,7 @@
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO E VENT SHALL THE AUTHORS OR
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
@@ -133,25 +133,133 @@ StackType_t uxTimerTaskStack[ configTIMER_TASK_STACK_DEPTH ];
 static BaseType_t xTraceRunning = pdTRUE;
 
 /*-----------------------------------------------------------*/
-void Task1() {
-	while (1) {
-		printf("This is task1!\n");
-		vTaskDelay(100);
-		fflush(stdout);
-	}
-}
 
-void Task2() {
-	while (1) {
-		printf("This is task2!\n");
-		vTaskDelay(500);
-		fflush(stdout);
 
-	}
-}
 
-int main( void )
+
+
+
+static int iCount = 0;
+static int iCount2 = 0;
+static int iCount3 = 0;
+static double mTime1 = 0.0;
+static double mTime2 = 0.0;
+
+static double cTime1 = 0.0;
+static double cTime2 = 0.0;
+
+static double MexecTime = 0.0;
+static double CexecTime = 0.0;
+
+
+
+
+#define SIZE 10
+#define ROW SIZE
+#define COL SIZE
+static void matrix_task()
 {
+	int i;
+	double** a = (double**)pvPortMalloc(ROW * sizeof(double*));
+	for (i = 0; i < ROW; i++) a[i] = (double*)pvPortMalloc(COL * sizeof(double));
+	double** b = (double**)pvPortMalloc(ROW * sizeof(double*));
+	for (i = 0; i < ROW; i++) b[i] = (double*)pvPortMalloc(COL * sizeof(double));
+	double** c = (double**)pvPortMalloc(ROW * sizeof(double*));
+	for (i = 0; i < ROW; i++) c[i] = (double*)pvPortMalloc(COL * sizeof(double));
+
+	double sum = 0.0;
+	int j, k, l;
+	if (iCount3 != 0) iCount3 = 0;
+	mTime1 = iCount3;
+	for (i = 0; i < SIZE; i++) {
+		for (j = 0; j < SIZE; j++) {
+			a[i][j] = 1.5;
+			b[i][j] = 2.6;
+		}
+	}
+
+
+	while (1) {
+		/*
+		* In an embedded systems, matrix multiplication would block the CPU for a long time
+		* but since this is a PC simulator we must add one additional dummy delay.
+		*/
+
+		long simulationdelay;
+		for (simulationdelay = 0; simulationdelay < 1000000000; simulationdelay++)
+			;
+
+		for (i = 0; i < SIZE; i++) {
+			for (j = 0; j < SIZE; j++) {
+				c[i][j] = 0.0;
+			}
+		}
+
+		for (i = 0; i < SIZE; i++) {
+			for (j = 0; j < SIZE; j++) {
+				sum = 0.0;
+				for (k = 0; k < SIZE; k++) {
+					for (l = 0; l < 10; l++) {
+						sum = sum + a[i][k] * b[k][j];
+					}
+				}
+				c[i][j] = sum;
+			}
+		}
+		//
+
+		mTime2 = iCount3;
+		MexecTime = mTime2 - mTime1;
+		vTaskDelay(100);
+		printf("ExecTimeM = %6.1f miliseconds\n",((MexecTime) / (double)portTICK_PERIOD_MS));
+		printf("TOTAL %d \n", iCount);
+		if (iCount3 != 0) iCount3 = 0;
+
+
+	}
+}
+
+
+
+static void communication_task()
+{
+	while (1) {
+		if (iCount2 != 0) iCount2 = 0;
+		cTime1 = iCount2;
+		printf("Sending data...\n");
+		fflush(stdout);
+		vTaskDelay(100);
+		printf("Data sent!\n");
+		fflush(stdout);
+		vTaskDelay(100);
+		cTime2 = iCount2;
+		CexecTime = cTime2 - cTime1;
+		printf("ExecTime = %6.1f miliseconds\n", ((CexecTime)  / (double)portTICK_PERIOD_MS));
+		printf("TOTAL %d \n", iCount);
+		if (iCount2 != 0) iCount2 = 0;
+
+	}
+
+}
+
+
+
+
+xTaskHandle matrix_handle;
+xTaskHandle communication_handle;
+
+
+
+
+
+
+
+
+
+
+int main(void)
+{
+	//fp = fopen("file2.txt", "w");
 	/* This demo uses heap_5.c, so start by defining some heap regions.  heap_5
 	is only used for test and example reasons.  Heap_4 is more appropriate.  See
 	http://www.freertos.org/a00111.html for an explanation. */
@@ -159,18 +267,23 @@ int main( void )
 
 	/* Initialise the trace recorder.  Use of the trace recorder is optional.
 	See http://www.FreeRTOS.org/trace for more information. */
-	vTraceEnable( TRC_START );
+	vTraceEnable(TRC_START);
 
-	xTaskHandle HT;
-	xTaskCreate(Task1, "Task1", 3, NULL, 1, &HT);
-	xTaskCreate(Task2, "Task2", 3, NULL, 3, &HT);
 
-	
+	/*xTaskHandle matrix_handle;
+	xTaskHandle communication_handle;*/
+	xTaskCreate((pdTASK_CODE)matrix_task, (signed char*)"Matrix", 1000, NULL, 1, &matrix_handle);
+	xTaskCreate((pdTASK_CODE)communication_task, (signed char*)"Communication", configMINIMAL_STACK_SIZE, NULL, 3, &communication_handle);
+
+
 	vTaskStartScheduler();
 	for (;;);
 	return 0;
 }
 /*-----------------------------------------------------------*/
+
+
+
 
 void vApplicationMallocFailedHook( void )
 {
@@ -241,20 +354,51 @@ void vApplicationStackOverflowHook( TaskHandle_t pxTask, char *pcTaskName )
 }
 /*-----------------------------------------------------------*/
 
-void vApplicationTickHook( void )
+void prioritysettask(void) {
+	if (iCount3 > 1000)
+		vTaskPrioritySet(communication_handle, 4);
+	else
+		if (iCount3 < 300)
+			vTaskPrioritySet(communication_handle, 2);
+}
+
+
+
+void vApplicationTickHook(void)
 {
 	/* This function will be called by each tick interrupt if
 	configUSE_TICK_HOOK is set to 1 in FreeRTOSConfig.h.  User code can be
 	added here, but the tick hook is called from an interrupt context, so
 	code must not attempt to block, and only the interrupt safe FreeRTOS API
 	functions can be used (those that end in FromISR()). */
-	#if ( mainCREATE_SIMPLE_BLINKY_DEMO_ONLY != 1 )
+	/*#if ( mainCREATE_SIMPLE_BLINKY_DEMO_ONLY != 1 )*/
 	{
-		vFullDemoTickHookFunction();
-	}
-	#endif /* mainCREATE_SIMPLE_BLINKY_DEMO_ONLY */
+		//prioritysettask();
+		iCount3++;
+		iCount++;
+		iCount2++;
+		/*if (matrix_handle == xTaskGetCurrentTaskHandle())
+		{
+			iCount++;
+			//fprintf(fp, "iCount %d \n", iCount);
+			iCount2 = 0;
+		}
+
+
+
+		if (communication_handle == xTaskGetCurrentTaskHandle()) {
+			iCount2++;
+			//fprintf(fp, "iCount2 %d \n", iCount2);
+			iCount = 0;
+		}*/
+		/*vFullDemoTickHookFunction();*/
+}
+	/*#endif  mainCREATE_SIMPLE_BLINKY_DEMO_ONLY */
 }
 /*-----------------------------------------------------------*/
+
+
+
 
 void vApplicationDaemonTaskStartupHook( void )
 {
