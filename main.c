@@ -234,7 +234,7 @@ static void communication_task()
 		vTaskDelay(100);
 		cTime2 = iCount2;
 		CexecTime = cTime2 - cTime1;
-		printf("ExecTime = %6.1f miliseconds\n", ((CexecTime)  / (double)portTICK_PERIOD_MS));
+		printf("ExecTimeC = %6.1f miliseconds\n", ((CexecTime)  / (double)portTICK_PERIOD_MS));
 		printf("TOTAL %d \n", iCount);
 		if (iCount2 != 0) iCount2 = 0;
 
@@ -272,8 +272,8 @@ int main(void)
 
 	/*xTaskHandle matrix_handle;
 	xTaskHandle communication_handle;*/
-	xTaskCreate((pdTASK_CODE)matrix_task, (signed char*)"Matrix", 1000, NULL, 1, &matrix_handle);
-	xTaskCreate((pdTASK_CODE)communication_task, (signed char*)"Communication", configMINIMAL_STACK_SIZE, NULL, 3, &communication_handle);
+	xTaskCreate((pdTASK_CODE)matrix_task, (signed char*)"Matrix", 1000, NULL, 3, &matrix_handle);
+	xTaskCreate((pdTASK_CODE)communication_task, (signed char*)"Communication", configMINIMAL_STACK_SIZE, NULL, 1, &communication_handle);
 
 
 	vTaskStartScheduler();
@@ -355,11 +355,16 @@ void vApplicationStackOverflowHook( TaskHandle_t pxTask, char *pcTaskName )
 /*-----------------------------------------------------------*/
 
 void prioritysettask(void) {
-	if (iCount2 > 1000)
+	if (iCount2 > 200) {
+		//printf("Counter changed1000 /n");
 		vTaskPrioritySet(communication_handle, 4);
+	}
 	else
-		if (iCount2 < 300)
+		if (iCount2 < 100) {
 			vTaskPrioritySet(communication_handle, 2);
+			//printf("Counter changed300 /n");
+		}
+
 }
 
 
@@ -373,7 +378,7 @@ void vApplicationTickHook(void)
 	functions can be used (those that end in FromISR()). */
 	/*#if ( mainCREATE_SIMPLE_BLINKY_DEMO_ONLY != 1 )*/
 	{
-		//prioritysettask();
+		prioritysettask();
 		iCount3++;
 		iCount++;
 		iCount2++;
