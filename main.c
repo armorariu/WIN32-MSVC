@@ -48,16 +48,18 @@
  *
  *******************************************************************************
  */
+ /* FreeRTOS kernel includes. */
+#include "FreeRTOS.h"
+#include "task.h"
 
 /* Standard includes. */
 #include <stdio.h>
 #include <stdlib.h>
 //#include <conio.h>
+#include <timers.h>
 
-/* FreeRTOS kernel includes. */
-#include "FreeRTOS.h"
-#include "task.h"
 
+//testtttt
 /* This project provides two demo applications.  A simple blinky style demo
 application, and a more comprehensive test and demo application.  The
 mainCREATE_SIMPLE_BLINKY_DEMO_ONLY setting is used to select between the two.
@@ -139,16 +141,16 @@ static BaseType_t xTraceRunning = pdTRUE;
 
 
 
-static int iCount = 0;
+//static int iCount = 0;
 static int iCount2 = 0;
-static int iCount3 = 0;
-static double mTime1 = 0.0;
-static double mTime2 = 0.0;
+//static int iCount3 = 0;
+//static double mTime1 = 0.0;
+//static double mTime2 = 0.0;
 
 static double cTime1 = 0.0;
 static double cTime2 = 0.0;
 
-static double MexecTime = 0.0;
+//static double MexecTime = 0.0;
 static double CexecTime = 0.0;
 
 
@@ -169,8 +171,8 @@ static void matrix_task()
 
 	double sum = 0.0;
 	int j, k, l;
-	if (iCount3 != 0) iCount3 = 0;
-	mTime1 = iCount3;
+	//if (iCount3 != 0) iCount3 = 0;
+	//mTime1 = iCount3;
 	for (i = 0; i < SIZE; i++) {
 		for (j = 0; j < SIZE; j++) {
 			a[i][j] = 1.5;
@@ -208,19 +210,22 @@ static void matrix_task()
 		}
 		//
 
-		mTime2 = iCount3;
-		MexecTime = mTime2 - mTime1;
-		vTaskDelay(100);
-		printf("ExecTimeM = %6.1f miliseconds\n",((MexecTime) / (double)portTICK_PERIOD_MS));
-		printf("TOTAL %d \n", iCount);
-		if (iCount3 != 0) iCount3 = 0;
+
+
+
+
+		//mTime2 = iCount3;
+		//MexecTime = mTime2 - mTime1;
+		//printf("ExecTimeM = %6.1f miliseconds\n",((MexecTime) / (double)portTICK_PERIOD_MS));
+		//printf("TOTAL %d \n", iCount);
+		//if (iCount3 != 0) iCount3 = 0;
 
 
 	}
 }
 
 
-
+/*
 static void communication_task()
 {
 	while (1) {
@@ -241,20 +246,71 @@ static void communication_task()
 	}
 
 }
+*/
+
 
 
 
 
 xTaskHandle matrix_handle;
-xTaskHandle communication_handle;
+xTaskHandle aperiodic_handle;
+//xTaskHandle communication_handle;
+
+static void aperiodic_task()
+{
+	if (iCount2 != 0) iCount2 = 0;
+	cTime1 = iCount2;
+	printf("Aperiodic task started!\n");
+	fflush(stdout);
+	long i;
+	for (i = 0; i < 1000000000; i++); //Dummy workload
+	printf("Aperiodic task done!\n");
+	fflush(stdout);
+	cTime2 = iCount2;
+	CexecTime = cTime2 - cTime1;
+	printf("ExecTime = %6.1f miliseconds\n", ((CexecTime) / (double)portTICK_PERIOD_MS));
+	vTaskDelete(aperiodic_handle);
+
+
+}
 
 
 
-////test
+/* A variable to hold a count of the number of times the timer expires. */
+long lExpireCounters = 0;
+void vTimerCallback(TimerHandle_t pxTimer)
+{
+	printf("Timer callback!\n");
+	xTaskCreate((pdTASK_CODE)aperiodic_task, (signed char*)"Aperiodic", configMINIMAL_STACK_SIZE, NULL, 2, &aperiodic_handle);
+	long lArrayIndex;
+	const long xMaxExpiryCountBeforeStopping = 10;
+	/* Optionally do something if the pxTimer parameter is NULL. */
+	configASSERT(pxTimer);
+	/* Increment the number of times that pxTimer has expired. */
+	lExpireCounters += 1;
+	/* If the timer has expired 10 times then stop it from running. */
+	if (lExpireCounters == xMaxExpiryCountBeforeStopping)
+		/* Do not use a block time if calling a timer API function from a
+		timer callback function, as doing so could cause a deadlock! */
+		xTimerStop(pxTimer, 0);
+}
 
 
 
 
+
+
+void vCallbackFunction(TimerHandle_t xTimers);
+
+TimerHandle_t xTimerCreate
+(	const char* const pcTimerName,
+	const TickType_t xTimerPeriod,
+	const UBaseType_t uxAutoReload,
+	void* const pvTimerID,
+	TimerCallbackFunction_t pxCallbackFunction);
+
+#define NUM_TIMERS 5
+TimerHandle_t xTimers[NUM_TIMERS];
 
 
 int main(void)
@@ -268,20 +324,44 @@ int main(void)
 	/* Initialise the trace recorder.  Use of the trace recorder is optional.
 	See http://www.FreeRTOS.org/trace for more information. */
 	vTraceEnable(TRC_START);
+	const pvTimerID;
+	int32_t x;
+	for (x = 0; x < NUM_TIMERS; x++)
+	{
+		xTimers[x] = xTimerCreate("T1",             // Text name for the task.  Helps debugging only.  Not used by FreeRTOS.
+			5000,     // The period of the timer in ticks.
+			pdTRUE,           // This is an auto-reload timer.
+			(void*)&pvTimerID,    // A variable incremented by the software timer's callback function
+			vTimerCallback); // The function to execute when the timer expires.
+		if (xTimers[x] == NULL)
+			printf("Timer not created");
+
+		else
+		{
+			// Start the timer.  No block time is specified, and even if one was
+			// it would be ignored because the scheduler has not yet been
+			// started.
+			if (xTimerStart(xTimers[x], 0) != pdPASS)
+			{
+				printf(" The timer could not be set into the Active state");
+			}
+
+		}
 
 
-	/*xTaskHandle matrix_handle;
-	xTaskHandle communication_handle;*/
-	xTaskCreate((pdTASK_CODE)matrix_task, (signed char*)"Matrix", 1000, NULL, 3, &matrix_handle);
-	xTaskCreate((pdTASK_CODE)communication_task, (signed char*)"Communication", configMINIMAL_STACK_SIZE, NULL, 1, &communication_handle);
 
 
-	vTaskStartScheduler();
-	for (;;);
-	return 0;
+		/*xTaskHandle matrix_handle;
+		xTaskHandle communication_handle;*/
+		xTaskCreate((pdTASK_CODE)matrix_task, (signed char*)"Matrix", 1000, NULL, 1, &matrix_handle);
+		//xTaskCreate((pdTASK_CODE)communication_task, (signed char*)"Communication", configMINIMAL_STACK_SIZE, NULL, 1, &communication_handle);
+
+		vTaskStartScheduler();
+		for (;;);
+		return 0;
+	}
 }
 /*-----------------------------------------------------------*/
-
 
 
 
@@ -354,19 +434,18 @@ void vApplicationStackOverflowHook( TaskHandle_t pxTask, char *pcTaskName )
 }
 /*-----------------------------------------------------------*/
 
+/*
 void prioritysettask(void) {
-	if (iCount2 > 200) {
-		//printf("Counter changed1000 /n");
+	if (iCount2 > 1000) {
 		vTaskPrioritySet(communication_handle, 4);
 	}
 	else
-		if (iCount2 < 100) {
+		if (iCount2 < 300) {
 			vTaskPrioritySet(communication_handle, 2);
-			//printf("Counter changed300 /n");
 		}
 
 }
-
+*/
 
 
 void vApplicationTickHook(void)
@@ -378,9 +457,9 @@ void vApplicationTickHook(void)
 	functions can be used (those that end in FromISR()). */
 	/*#if ( mainCREATE_SIMPLE_BLINKY_DEMO_ONLY != 1 )*/
 	{
-		prioritysettask();
-		iCount3++;
-		iCount++;
+		//prioritysettask();
+		//iCount3++;
+		//iCount++;
 		iCount2++;
 		/*if (matrix_handle == xTaskGetCurrentTaskHandle())
 		{
